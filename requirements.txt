@@ -10,3 +10,6 @@ python-jose
 email-validator
 python-multipart
 pdfplumber
+requests
+groq
+openai
