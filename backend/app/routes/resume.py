@@ -13,6 +13,7 @@ from app.db.session import get_db
 from app.utils.dependencies import get_current_user
 from app.models.users import User
 from app.models.resume import Resume
+from app.ai.resume_analyzer import analyze_rezume
 
 router = APIRouter()
 
@@ -66,18 +67,42 @@ def upload_resume(
             status_code=500,
             detail=f"An error occurred while processing the file: {str(e)}"
         )
-    
+
 
 @router.get("/resume")
-def get_user_resume(
-    db : Session = Depends(get_db),
-    current_user : User = Depends(get_current_user)
+def analyze_uploaded_resume(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-    existing_user = db.query(Resume).filter(
+    resume_info = db.query(Resume).filter(
         Resume.user_id == current_user.id
     ).first()
+
+    return resume_info
+
+
+@router.get("/analyze/{resume_id}")
+def analyze_uploaded_resume(
+    resume_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+
+    if not resume:
+        raise HTTPException(
+            status_code=404,
+            detail= "Resume not found"
+        )
     
+    analysis = analyze_rezume(
+        resume_text = resume.extracted_text
+    )
 
-    return existing_user
-
-   
+    return {
+        "resume_id" : resume.id,
+        "analysis" : analysis
+    }
