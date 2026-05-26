@@ -5,6 +5,9 @@ from app.models.resume import Resume
 from app.routes.auth import router as auth_router
 from app.routes.user import router as user_router
 from app.routes.resume import router as resume_router
+from app.routes.interview import router as interview_router
+
+
 
 Base.metadata.create_all(bind=engine)
 
@@ -27,6 +30,12 @@ app.include_router(
    resume_router,
    prefix="/resume",
    tags=["Resumes"]
+)
+
+app.include_router(
+   interview_router,
+   prefix="/interview",
+   tags=["Interview"]
 )
 
 @app.get("/")
