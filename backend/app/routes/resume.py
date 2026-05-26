@@ -71,7 +71,7 @@ def upload_resume(
 
 
 @router.get("/resume")
-def analyze_uploaded_resume(
+def get_user_resume(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):

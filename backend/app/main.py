@@ -2,10 +2,12 @@ from fastapi import FastAPI
 from app.db.database import engine , Base
 from app.models.users import User
 from app.models.resume import Resume
+from app.models.interview_session import InterviewSession
 from app.routes.auth import router as auth_router
 from app.routes.user import router as user_router
 from app.routes.resume import router as resume_router
 from app.routes.interview import router as interview_router
+from app.routes.analytics import router as analytics_router
 
 
 
@@ -36,6 +38,12 @@ app.include_router(
    interview_router,
    prefix="/interview",
    tags=["Interview"]
+)
+
+app.include_router(
+   analytics_router,
+   prefix="/analytics",
+   tags=["Analytics"]
 )
 
 @app.get("/")
