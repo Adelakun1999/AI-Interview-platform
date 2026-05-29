@@ -4,7 +4,9 @@ import { useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 
-export default function LoginPage() {
+export default function RegisterPage() {
+
+  const [fullName, setFullName] = useState("");
 
   const [email, setEmail] = useState("");
 
@@ -14,40 +16,30 @@ export default function LoginPage() {
 
   const router = useRouter();
 
-  const handleLogin = async () => {
+  const handleRegister = async () => {
 
     try {
 
-      const formData = new URLSearchParams();
-
-      formData.append("username", email);
-
-      formData.append("password", password);
-
       const response = await axios.post(
-        "http://127.0.0.1:8000/auth/login",
-        formData,
+        "http://127.0.0.1:8000/auth/register",
         {
-          headers: {
-            "Content-Type":
-              "application/x-www-form-urlencoded",
-          },
+          full_name: fullName,
+          email: email,
+          password: password
         }
       );
 
-      const token = response.data.access_token;
+      console.log(response.data);
 
-      localStorage.setItem("token", token);
+      setMessage("Registration successful");
 
-      setMessage("Login successful");
-
-      router.push("/dashboard");
+      router.push("/login");
 
     } catch (error) {
 
       console.log(error);
 
-      setMessage("Login failed");
+      setMessage("Registration failed");
     }
   };
 
@@ -58,12 +50,20 @@ export default function LoginPage() {
       <div className="w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl p-8 shadow-2xl">
 
         <h1 className="text-3xl font-bold text-white text-center mb-2">
-          AI Interview Platform
+          Create Account
         </h1>
 
         <p className="text-zinc-400 text-center mb-8">
-          Login to continue
+          Start your AI interview journey
         </p>
+
+        <input
+          type="text"
+          placeholder="Full Name"
+          className="w-full p-3 rounded-lg bg-zinc-800 border border-zinc-700 text-white placeholder-zinc-400 mb-4 outline-none focus:border-blue-500"
+          value={fullName}
+          onChange={(e) => setFullName(e.target.value)}
+        />
 
         <input
           type="email"
@@ -82,10 +82,10 @@ export default function LoginPage() {
         />
 
         <button
-          onClick={handleLogin}
+          onClick={handleRegister}
           className="w-full bg-blue-600 hover:bg-blue-700 transition-all text-white p-3 rounded-lg font-semibold"
         >
-          Login
+          Register
         </button>
 
         <p className="text-center text-zinc-300 mt-4">

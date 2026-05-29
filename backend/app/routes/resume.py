@@ -77,7 +77,7 @@ def get_user_resume(
 ):
     resume_info = db.query(Resume).filter(
         Resume.user_id == current_user.id
-    ).first()
+    ).all()
 
     return resume_info
 
