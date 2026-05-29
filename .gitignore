@@ -11,3 +11,5 @@ wheels/
 .env
 .git/
 .python-version
+
+node_modules/
