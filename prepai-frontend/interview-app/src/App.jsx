@@ -270,6 +270,33 @@ const CSS = `
   .section-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
   .section-title { font-size: 16px; font-weight: 700; }
 
+  /* voice */
+  .voice-bar {
+    display: flex; align-items: center; gap: 10px; margin-top: 10px;
+    background: var(--bg); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 14px;
+  }
+  .mic-btn {
+    width: 38px; height: 38px; border-radius: 50%; border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: 17px;
+    flex-shrink: 0; transition: all .2s;
+    background: rgba(108,99,255,.15); color: var(--accent);
+  }
+  .mic-btn.recording {
+    background: rgba(255,101,132,.2); color: var(--accent2);
+    animation: pulse 1.2s ease infinite;
+  }
+  .mic-btn:disabled { opacity: .4; cursor: not-allowed; }
+  .voice-transcript {
+    flex: 1; font-family: var(--mono); font-size: 12.5px; color: var(--text);
+    line-height: 1.6; min-height: 20px;
+  }
+  .voice-hint { font-size: 11px; color: var(--muted); }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,101,132,.4); }
+    50% { box-shadow: 0 0 0 8px rgba(255,101,132,.0); }
+  }
+
   /* eval card */
   .eval-section { margin-top: 16px; padding: 14px; background: var(--bg); border-radius: 10px; border: 1px solid var(--border); }
   .eval-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 6px; font-weight: 700; }
@@ -530,6 +557,94 @@ function ResumePage() {
   );
 }
 
+// ─── Voice hook ──────────────────────────────────────────────────────────────
+function useVoice(onResult) {
+  const recogRef = useRef(null);
+  const [recording, setRecording] = useState(false);
+  const [supported] = useState(() => "webkitSpeechRecognition" in window || "SpeechRecognition" in window);
+
+  const start = () => {
+    if (!supported) { toast("Voice not supported in this browser. Use Chrome.", "error"); return; }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const r = new SR();
+    r.continuous = true;
+    r.interimResults = true;
+    r.lang = "en-US";
+    r.onstart = () => setRecording(true);
+    r.onend = () => setRecording(false);
+    r.onerror = () => { setRecording(false); toast("Microphone error. Check permissions.", "error"); };
+    r.onresult = (e) => {
+      const transcript = Array.from(e.results).map((r) => r[0].transcript).join("");
+      onResult(transcript);
+    };
+    r.start();
+    recogRef.current = r;
+  };
+
+  const stop = () => { recogRef.current?.stop(); setRecording(false); };
+  const toggle = () => recording ? stop() : start();
+
+  return { recording, toggle, supported };
+}
+
+// ─── Voice answer card ────────────────────────────────────────────────────────
+function VoiceAnswerCard({ idx, question, answer, onAnswer, onEvaluate, loadingEval, evalResult }) {
+  const { recording, toggle, supported } = useVoice((t) => onAnswer(idx, t));
+
+  return (
+    <div className="question-card">
+      <div className="q-number">Question {idx + 1}</div>
+      <div className="q-text">{question}</div>
+
+      <div className="voice-bar">
+        <button className={`mic-btn ${recording ? "recording" : ""}`} onClick={toggle} title={recording ? "Stop recording" : "Start recording"}>
+          {recording ? "⏹" : "🎙️"}
+        </button>
+        <div style={{ flex: 1 }}>
+          {answer
+            ? <div className="voice-transcript">{answer}</div>
+            : <div className="voice-hint">{recording ? "🔴 Listening… speak your answer" : supported ? "Click 🎙️ to start speaking your answer" : "Voice not supported — type below"}</div>
+          }
+        </div>
+        {answer && (
+          <button className="btn btn-ghost btn-sm" onClick={() => onAnswer(idx, "")} title="Clear answer">✕</button>
+        )}
+      </div>
+
+      {/* fallback text input */}
+      <textarea
+        className="input"
+        style={{ marginTop: 8 }}
+        placeholder="Or type your answer here…"
+        value={answer || ""}
+        onChange={(e) => onAnswer(idx, e.target.value)}
+      />
+
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+        <button className="btn btn-primary btn-sm" onClick={() => onEvaluate(idx, question)} disabled={loadingEval}>
+          {loadingEval ? <><span className="spinner" /> Evaluating…</> : "✓ Evaluate"}
+        </button>
+      </div>
+
+      {evalResult && (
+        <div className="eval-section">
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+            <span className="eval-title">Score</span>
+            <span style={{ fontSize: 20, fontWeight: 800, color: evalResult.score >= 7 ? "var(--accent3)" : evalResult.score >= 5 ? "var(--accent)" : "var(--accent2)" }}>
+              {evalResult.score}/10
+            </span>
+            <div className="score-bar-track" style={{ flex: 1 }}>
+              <div className="score-bar-fill" style={{ width: `${evalResult.score * 10}%` }} />
+            </div>
+          </div>
+          <div className="eval-title">Feedback</div>
+          <div className="eval-text">{evalResult.evaluation}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Interview ────────────────────────────────────────────────────────────────
 function InterviewPage() {
   const [resumes, setResumes] = useState([]);
@@ -630,36 +745,16 @@ function InterviewPage() {
       <p className="page-sub">Answer each question, then click Evaluate to get AI feedback.</p>
 
       {(questions || []).map((q, i) => (
-        <div className="question-card" key={i}>
-          <div className="q-number">Question {i + 1}</div>
-          <div className="q-text">{q}</div>
-          <textarea
-            className="input"
-            placeholder="Type your answer here…"
-            value={answers[i] || ""}
-            onChange={(e) => setAnswers((p) => ({ ...p, [i]: e.target.value }))}
-          />
-          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
-            <button className="btn btn-primary btn-sm" onClick={() => evaluate(i, q)} disabled={loadingE[i]}>
-              {loadingE[i] ? <><span className="spinner" /> Evaluating…</> : "✓ Evaluate"}
-            </button>
-          </div>
-          {evals[i] && (
-            <div className="eval-section">
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-                <span className="eval-title">Score</span>
-                <span style={{ fontSize: 20, fontWeight: 800, color: evals[i].score >= 7 ? "var(--accent3)" : evals[i].score >= 5 ? "var(--accent)" : "var(--accent2)" }}>
-                  {evals[i].score}/10
-                </span>
-                <div className="score-bar-track" style={{ flex: 1 }}>
-                  <div className="score-bar-fill" style={{ width: `${evals[i].score * 10}%` }} />
-                </div>
-              </div>
-              <div className="eval-title">Feedback</div>
-              <div className="eval-text">{evals[i].evaluation}</div>
-            </div>
-          )}
-        </div>
+        <VoiceAnswerCard
+          key={i}
+          idx={i}
+          question={q}
+          answer={answers[i]}
+          onAnswer={(idx, val) => setAnswers((p) => ({ ...p, [idx]: val }))}
+          onEvaluate={evaluate}
+          loadingEval={loadingE[i]}
+          evalResult={evals[i]}
+        />
       ))}
     </div>
   );
