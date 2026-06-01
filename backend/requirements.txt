@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+alembic
+python-dotenv
+passlib[bcrypt]
+bcrypt==4.0.1
+python-jose
+email-validator
+python-multipart
+pdfplumber
+requests
+groq
+openai
